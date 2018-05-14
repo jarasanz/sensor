@@ -1,0 +1,153 @@
+{
+    "sensorinfo":{
+        "sensor_id":1,
+        "location":"ALE LAB Test",
+        "name":"ALE-Test01",
+        "description":"Sonda de pruebas en test",
+        "lastconnection":"hoy",
+        "active":"yes",
+        "timer":600,
+        "lan":{
+            "active":"False",
+            "ipconfig":"dhcp",
+            "ipaddress":"",
+            "netmask":"",
+            "gateway":"",
+            "dns1":"",
+            "dns2":"",
+            "ntp":""
+        }
+    },
+    "wlans":[
+        {
+            "wlanid":1,
+            "configuration":{
+                "ssid":"Temp",
+                "status":"enable",
+                "band":"auto",
+                "vap":"auto",
+                "auth_method":"psk",
+                "psk":"Helicon666",
+                "ipconfig":"dhcp",
+                "ipaddress":"",
+                "netmask":"",
+                "gateway":"",
+                "dns1":"",
+                "dns2":""
+            },
+            "tests":[
+                {
+                    "test":"bandwidth",
+                    "status":"enable",
+                    "test_server_ip":"192.168.1.5",
+                    "test_server_port":"5201",
+                    "test_server_name":"Local - iperf3 Local"
+                },
+                {
+                    "test":"delay",
+                    "status":"enable",
+                    "test_server_ip":"192.168.1.5",
+                    "test_server_name":"Delay Test Server",
+                    "test_server_delay_packets_to_send":"50"
+                },
+                {
+                    "test":"packetLoss",
+                    "status":"enable",
+                    "test_server_ip":"192.168.1.5",
+                    "test_server_port":"5201",
+                    "test_server_name":"Packet-loss Server",
+                    "test_server_udp_bandwidth":"10M",
+                    "test_server_udp_time": "10",
+                    "test_server_udp_interval": "10"
+                }
+            ],
+            "outputs":[
+                {
+                    "output":"syslog",
+                    "status":"enable",
+                    "syslog_ip":"192.168.1.5",
+                    "syslog_port":514,
+                    "syslog_name":"splunk1"
+                },
+                {
+                    "output":"mongodb",
+                    "status":"enable",
+                    "mongodb_ip":"192.168.1.5",
+                    "mongodb_port":27017,
+                    "mongodb_name":"Local",
+                    "mongodb_db":"AENA"
+                },
+                {
+                    "output":"influxdb",
+                    "status":"enable",
+                    "influxdb_ip":"192.168.1.5",
+                    "influxdb_port":8086,
+                    "influxdb_name":"Local",
+                    "influxdb_user":"aena",
+                    "influxdb_passwd":"aena",
+                    "influxdb_db":"AENA"
+                }
+            ]
+        },
+        {
+            "wlanid":2,
+            "configuration":{
+                "ssid":"Stellar-PSK",
+                "status":"disable",
+                "band":"5GHz",
+                "vap":"dc:08:56:00:0a:79",
+                "auth_method":"802.1x",
+                "username":"user1",
+                "password":"password1",
+                "ipconfig":"dhcp",
+                "ipaddress":"",
+                "netmask":"",
+                "gateway":"",
+                "dns1":"",
+                "dns2":""
+            },
+            "tests":[
+                {
+                    "test":"bandwidth",
+                    "test_server_ip":"192.168.1.5",
+                    "test_server_port":"5201",
+                    "test_server_name":"Local - iperf3 Local"
+                },
+                {
+                    "test":"delay",
+                    "test_server_ip":"192.168.1.5",
+                    "test_server_name":"Delay Test Server",
+                    "test_server_delay_packets_to_send":"50"
+                },
+                {
+                    "test":"packetLoss",
+                    "test_server_ip":"192.168.1.5",
+                    "test_server_port":"5201",
+                    "test_server_name":"Packet-loss Server",
+                    "test_server_udp_bandwidth":"10M",
+                    "test_server_udp_time": "10",
+                    "test_server_udp_interval": "10"
+                }
+            ],
+            "outputs":[
+                {
+                    "output":"syslog",
+                    "status":"enable",
+                    "syslog_ip":"192.168.1.5",
+                    "syslog_port":514,
+                    "syslog_name":"splunk1"
+                },
+                {
+                    "output":"influxdb",
+                    "status":"enable",
+                    "influxdb_ip":"192.168.1.5",
+                    "influxdb_port":8086,
+                    "influxdb_name":"Local",
+                    "influxdb_user":"aena",
+                    "influxdb_passwd":"aena",
+                    "influxdb_db":"AENA"
+                }
+            ]
+        }
+    ]
+}
