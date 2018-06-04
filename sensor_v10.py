@@ -4,6 +4,7 @@
 #import logging
 #from logging.handlers import SysLogHandler
 
+from wireless import Wireless
 
 # Connectivity Failures File
 failures_file = "/home/ale/sensor/sensorwatchdog.json"
@@ -33,7 +34,7 @@ class Sensor:
     """
     
     # Used along the program for local syslog
-    logname = "WLANsensor"
+    logname = "sensor"
     
     # Local syslog configuration file
     local_syslog_config_file = "/home/ale/sensor/local_syslog_config.json"
@@ -53,8 +54,12 @@ class Sensor:
         # FIRST always init the logger, as it's used by rest of methods
         self.logger = self.LocalSyslogInitialization(logname,logging_config_file)
         
-        # Read the sensor configuration
+        # All information related with the wlan part of the sensor
+        # using the external Class Wireless(), that encapsulates the wlan
+        # needs for the sensor
+        self.wlan = Wireless(self.logname)
         
+        # Read the sensor configuration
         self.sensor = self.ReadConfigFile(config_file)
         
         # Initializate the Main variable to use, a LIST with all the WLAN
@@ -136,6 +141,10 @@ class Sensor:
         #               }
         
 
+
+
+
+
         
     def LocalSyslogInitialization (self, logname, logging_config_file):
         """
@@ -161,6 +170,7 @@ class Sensor:
         LOG_LOCAL5    = 21      #  reserved for local use
         LOG_LOCAL6    = 22      #  reserved for local use
         LOG_LOCAL7    = 23      #  reserved for local use
+        
         localsyslog = logging.handlers.SysLogHandler(address=('localhost', logging.handlers.SYSLOG_UDP_PORT), facility=LOG_LOCAL1, socktype=socket.SOCK_DGRAM)
 
         # Mandamos todo el logging
@@ -242,7 +252,7 @@ class Sensor:
         return
 
 
-    def connectWLAN (self, wlanid=0, ssid=""):
+    def connectWLAN (self, wlanid=-1, ssid=""):
         """
             Try to connect with the wlanid or ssid.
             
@@ -255,55 +265,73 @@ class Sensor:
                 self.connectWLAN(wlanid=3, ssid="SSID-Demo")
             will use wlanid=3 information to connecto to ssid
                 
-            Returns a list [status, reason, wirelessinfo]:
+            Returns [status, reason, wirelessinfo]:
                 status:
-                    True  -> Connection Success
-                    False -> Connection Failure
+                    1 -> Connection Success
+                    2 -> Error. Empty call to method
+                    3 -> Error. Could NOT connect to SSID
+                    
                 reason:
                     Message with failure information
                 wirelessinfo:
                     Important and needed informationm about the wirelessinfo
                     connection
         """
-        from wireless import Wireless
         
-        wireless = Wireless(self.logname)
+        # Attach to LOCAL SYSLOG
+        logger = self.logger
+        
+        logger.info("wlanid: <" + str(wlanid) + ">")
+        logger.info("ssid: <" + str(ssid) + ">")
         
         # Let's find the needed information using either wlanid or ssid
-        if (wlanid == 0 and ssid==""):
+        connectinfo = {}
+        if (wlanid == -1 and ssid==""):
             # empty call self.connectWLAN()... invalid
-            return [False, "Empty call to method", wireless.wirelessinfo]
-        elif (wlanid == 0 and ssid != ""):
+            logger.info("Empty call to method, no SSID neither wlanid.")
+            return [2, "Empty call to method"]
+            
+        elif (wlanid == -1 and ssid != ""):
             # receive the information using the ssid
             for wlan in self.sensor["wlans"]:
                 if wlan["configuration"]["ssid"] == ssid:
+                    # SSID found !!
+                    logger.info("Connecting using the SSID...")
                     connectinfo = wlan["configuration"]
-        elif (wlanid != 0):
+                    break
+            if len(connectinfo) == 0:
+                # connectinfo={}... so SSID NOT found
+                logger.info("Could NOT find the SSID in the SENSOR information...")
+                return [4, "SSID not present in the SENSOR information..."]
+        elif (wlanid > -1):
             # we receive the information using the wlanid
             for wlan in self.sensor["wlans"]:
                 if (wlan["wlanid"] == wlanid):
+                    # wlan ID is ok
+                    logger.info("Connecting using the wlanid to select the WLAN connection information...")
                     connectinfo = wlan["configuration"]
+                    break
+            if len(connectinfo) == 0:
+                # connectinfo={}... so wlanid is NO OK
+                logger.info("WLAN ID (wlanid) not matching with a valid wlanid in the SENSOR information.")
+                return [5, "WLAN ID (wlanid) not matching with a valid wlanid in the SENSOR information."]
+
+        # Call wireless method with the right information to connect to wlan
+        logger.info("Calling wlan.connectWLAN for connecting to SSID <" + str(connectinfo["ssid"]) + ">...")
+        status,output = self.wlan.connectWLAN(connectinfo)
         
-        # connectinfo is wlan["configuration"]
-#            "configuration":{
-#                "ssid":"Temp",
-#                "status":"enable",
-#                "band":"auto",
-#                "vap":"auto",
-#                "auth_method":"psk",
-#                "psk":"password-psk",
-#                "ipconfig":"dhcp",
-#                "ipaddress":"",
-#                "netmask":"",
-#                "gateway":"",
-#                "dns1":"",
-#                "dns2":""
-#            }
-        # Call wireless object method with the right information
-        wireless.connectWLAN(connectinfo)
-        
-        return [True, "All ok !!!", wireless.wirelessinfo]
-        
+        if status > 1:
+            # something went wrong
+            logger.warning("ERROR: Could NOT connect to SSID <" + str(connectinfo["ssid"]) + ">.")
+            return [3, "ERROR: Could NOT connect to SSID <" + str(connectinfo["ssid"]) + ">."]
+        else:
+            # SUCCESS!!! Connected to the right SSID
+            logger.info("SUCCESS!!! Successfully connected to the SSID <" + str(connectinfo["ssid"]) + ">.")
+            # update wlan information
+            self.wlan.getAssociationInfo()
+            return [1, "SUCCESS!!! Successfully connected to the SSID <" + str(connectinfo["ssid"]) + ">."]
+
+
 
 
     def runTest (self, wlanid, testid):
