@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+from osshell import OSshell
 
 class Wireless:
 
@@ -16,49 +17,16 @@ class Wireless:
         bartolo     ALL=(root) NOPASSWD: /sbin/iw, /usr/bin/nmcli, /usr/bin/lshw
     """
     
-    def __init__(self, logname="logname"):
+    def __init__(self, logname="log"):
         """
             Initializate wireless
         """
-        self.wirelessinfo = []
-        self.logger = logging.getLogger(logname+".Wireless")
+        self.logname = logname + ".Wireless"
+        self.logger = logging.getLogger(self.logname)
         self.logger.info("Logging initialization of Wireless. Done.")
-        self.getSystemWLANInfo()
-        
-        
-        
-    def runOSCommand(self, command_shell):
-        """
-            Run the OS command in <command_shell>, a LIST containing the 
-            command to run for subprocess
-            Return [status, 
-                    output, 
-                    [[msg],[errno],[strerror]]
-                   ]
-                status:
-                    1  -> OK, command successfully executed
-                    20 -> NOK, problem calling the operating system
-        """
-        import subprocess
-        import sys
-        # Attach to LOCAL SYSLOG
-        logger = self.logger
-        errno = 0
-        strerror = ""
-        
-        try:
-            p1 = subprocess.run(command_shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        
-        except OSError as error:
-            errno, strerror = error.args
-            logger.critical("Couldn't execute command <" + command_shell + ">")
-            logger.critical("Error number: " + str(errno))
-            logger.critical("Error msg: " + strerror)
-            return [20, p1, ["Couldn't execute command <" + str(command_shell) + ">", errno, strerror]]
-        
-        return [1, p1, ["Command successfully executed", errno, strerror]]
-        
-        
+        self.os = OSshell()
+        self.wirelessinfo = self.getSystemWLANInfo()
+
         
     def getSystemWLANInfo(self):
         """
@@ -79,8 +47,7 @@ class Wireless:
         # Let's get Hardware and Drivers information about wireless system
         # with the output of lshw
         command_shell = ["sudo", "/usr/bin/lshw", "-C", "network"]
-        
-        status,p1,errors = self.runOSCommand(command_shell)
+        status,p1,errors = self.os.runoscommand(command_shell)
         
         if p1.returncode:
             # Pretty strange something was wrong with the call to lshw
@@ -150,7 +117,7 @@ class Wireless:
             
             command_shell = ["sudo", "/sbin/iw", "phy", wlan_interface["phy"], "info"]
             
-            status,p1,errors = self.runOSCommand(command_shell)
+            status,p1,errors = self.os.runoscommand(command_shell)
             
             p2 = p1.stdout.decode("utf-8").strip()
             
@@ -161,7 +128,7 @@ class Wireless:
         for wlan_interface in wlaninfo:
             
             command_shell = ["sudo", "/sbin/iw", "reg", "get"]
-            status,p1,errors = self.runOSCommand(command_shell)
+            status,p1,errors = self.os.runoscommand(command_shell)
         
             p2 = p1.stdout.decode("utf-8").strip()
             
@@ -195,7 +162,7 @@ class Wireless:
         for wlan_interface in self.wirelessinfo:
             
             command_shell = ["sudo", "/sbin/iw", "dev", wlan_interface["logical name"], "link"]
-            status,p1,errors = self.runOSCommand(command_shell)
+            status,p1,errors = self.os.runoscommand(command_shell)
         
             p2 = p1.stdout.decode("utf-8").strip()
             
@@ -226,7 +193,7 @@ class Wireless:
                         wlan_interface["connection"]["beacon"] = line.split()[2]
                 
                 command_shell = ["sudo", "/sbin/iw", "dev", wlan_interface["logical name"], "info"]
-                status,p1,errors = self.runOSCommand(command_shell)
+                status,p1,errors = self.os.runoscommand(command_shell)
         
                 p2 = p1.stdout.decode("utf-8").strip()
                 
@@ -245,7 +212,7 @@ class Wireless:
             
         
                 command_shell = ["ip", "a", "show", wlan_interface["logical name"]]
-                status,p1,errors = self.runOSCommand(command_shell)
+                status,p1,errors = self.os.runoscommand(command_shell)
         
                 p2 = p1.stdout.decode("utf-8").strip()
                 
@@ -258,14 +225,13 @@ class Wireless:
                         wlan_interface["connection"]["mask6"] = line.split()[1].split("/")[1]
                 
                 command_shell = ["ip", "route", "list"]
-                status,p1,errors = self.runOSCommand(command_shell)
+                status,p1,errors = self.os.runoscommand(command_shell)
         
                 p2 = p1.stdout.decode("utf-8").strip()
                 
                 for line in p2.splitlines():
                     if line.strip().startswith("default "):
                         wlan_interface["connection"]["gateway"] = line.split()[2]
-
 
         return self.wirelessinfo
         
@@ -300,7 +266,7 @@ class Wireless:
         
         logger.info("Searching " + wlaninfo["ssid"] + " in the list of nmcli connections...")
         command_shell = ["nmcli", "connection", "show", wlaninfo["ssid"]]
-        status,p1,errors = self.runOSCommand(command_shell)
+        status,p1,errors = self.os.runoscommand(command_shell)
         
         if status == 20:
             return [20, False, errors[0], errors[1], errors[2]]
@@ -516,7 +482,7 @@ class Wireless:
         
         # Let's delete the connection, just in case
         command_shell = ["nmcli", "connection", "delete", wlaninfo["ssid"]]
-        status,output,errors = self.runOSCommand(command_shell)
+        status,output,errors = self.os.runoscommand(command_shell)
         
         if status == 20:
             # OS error calling nmcli
@@ -645,8 +611,8 @@ class Wireless:
         
         # Command to call nmcli is complete
         logger.info("nmcli command before calling runOSCommand <" + str(command_shell) + ">.")
-        logger.info("Calling runOSCommand to add connection to nmcli connections list...")
-        status,output,errors = self.runOSCommand(command_shell)
+        logger.info("Calling Operating System to add connection to nmcli connections list...")
+        status,output,errors = self.os.runoscommand(command_shell)
         
         if status > 1:
             # Something went wrong calling the Operating System
@@ -690,7 +656,7 @@ class Wireless:
         if force_scan:
             # Force to scan
             command_shell = ["nmcli","device","wifi","rescan"]
-            status,output,errors = self.runOSCommand(command_shell)
+            status,output,errors = self.os.runoscommand(command_shell)
 #            if status > 1:
 #                # Problem with the Operating System
 #                # using information stored in the kernel from last scans
@@ -701,7 +667,7 @@ class Wireless:
 
         # Calling scan results
         command_shell = ["nmcli","-f","ssid,bssid,signal,chan,in-use","device","wifi"]
-        status,output,errors = self.runOSCommand(command_shell)
+        status,output,errors = self.os.runoscommand(command_shell)
         if status > 1:
             #Problem calling the Operating System
             return [2,"Problem scanning, could NOT receive information from active SSIDs..."]
@@ -711,7 +677,38 @@ class Wireless:
                 return [1, "SSID <"+wlaninfo["ssid"]+"> is in the list of visible SSIDs."]
 
         
-        
+    def checkcurrentwlan(self, wlaninfo):
+        """
+        Check if the current, active connection to WLAN is equal to the requested by wlaninfo
+        :param wlaninfo: WLAN parameters to check
+        :return: [status, message]
+        """
+        # Attach to LOCAL SYSLOG
+        logger = self.logger
+        # Instantiate an OSshell object for calling the Operating System
+        os = OSshell(self.logname)
+        # Let's get current wlan
+        command_shell = ["nmcli", "connection", "show", "--active", wlaninfo["ssid"]]
+        status,output,errors = os.runoscommand(command_shell)
+        if status > 1:
+            #Problem calling the Operating System
+            return [2, "Problem scanning, could NOT receive information from active SSIDs..."]
+        else:
+            p1 = output.stdout.decode("utf-8").strip()
+            # Check if current ssid match with wlaninfo
+            if wlaninfo["ssid"] in p1:
+                # The ACTIVE ssid IS the one in wlaninfo
+                # get detailed information about the current wlan
+                associatedwlan = self.getAssociationInfo()
+                """
+                Esto tiene mucha miga...
+                """
+            else:
+                # The ACTIVE ssid is NOT the one in wlaninfo
+                logger.info("Current SSID is not equal to needed SSID <" + str(wlaninfo["ssid"]) + ">. Will have to disconnect and connect to the right one.")
+                return [3, "Current SSID is not equal to needed SSID <" + str(wlaninfo["ssid"]) + ">. Will have to disconnect and connect to the right one."]
+
+
 
     def connectWLAN(self, wlaninfo):
         """
@@ -756,7 +753,7 @@ class Wireless:
                 return [2, "Could NOT create a connection in nmcli."]
         
         # WLAN network in wlaninfo is already available in the list of nmcli connections
-        logger.info("WLAN network <" + str(wlaninfo["ssid"]) + "> available in the list of nmcli connections...")
+        # logger.info("WLAN network <" + str(wlaninfo["ssid"]) + "> available in the list of nmcli connections...")
         
         # Check that the WLAN network is present in the air
         logger.info("Checking that <" + str(wlaninfo["ssid"]) + "> is seen in the air...")
@@ -765,11 +762,15 @@ class Wireless:
             logger.warning("SSID <" + str(wlaninfo["ssid"]) + ">, NOT RF visible... CAN'T CONNECT")
             return [3, "SSID <"+wlaninfo["ssid"]+">, NOT visible in the last scanned... CAN'T CONNECT"]
         logger.info("SSID <" + str(wlaninfo["ssid"]) + "> is RF visible... can connect.")
-        
+
+        #Check if the current connection is right
+        logger.info("Checking if current connection is ok, so can be used without modification...")
+
+
         # Connect
         logger.info("Connecting with the SSID <" + str(wlaninfo["ssid"]) + ">...")
         command_shell = ["nmcli","connection","up",wlaninfo["ssid"]]
-        status,output,errors = self.runOSCommand(command_shell)
+        status,output,errors = self.os.runoscommand(command_shell)
         
         if status > 1:
             # ERROR calling Operating System
@@ -785,7 +786,9 @@ class Wireless:
                 logger.info("Problem in nmcli connecting to SSID <" + str(wlaninfo["ssid"]) + ">.")
                 return [5, output.stdout.decode("utf-8").strip()]
                 
-
+    def pprint(self):
+        import json
+        return print(json.dumps(self.wirelessinfo, indent=2))
 
 
 

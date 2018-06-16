@@ -37,9 +37,7 @@ wlaninfo = {
 }
 print(json.dumps(wireless.checkSSIDnmcli(wlaninfo), indent=2))
 
-print(wireless.addConnectionnmcli(wlaninfo))
-
-print(json.dumps(wireless.checkSSIDnmcli(wlaninfo), indent=2))
-
-print(wireless.connectWLAN(wlaninfo))
+# print(wireless.addConnectionnmcli(wlaninfo))
+# print(json.dumps(wireless.checkSSIDnmcli(wlaninfo), indent=2))
+# print(wireless.connectWLAN(wlaninfo))
 
